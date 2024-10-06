@@ -1,0 +1,293 @@
+cmake_minimum_required (VERSION 3.23)
+
+project (VulkanTutorial)
+
+find_package (glfw3 REQUIRED)
+find_package (glm REQUIRED)
+find_package (Vulkan REQUIRED)
+find_package (tinyobjloader REQUIRED)
+
+#find_package (pkgconfig)
+#pkg_get_variable (stb_includedir stb includedir)
+
+set(STB_INCLUDEDIR ${CMAKE_SOURCE_DIR}/../STB_INCLUDEDIR_4cj_)
+if (NOT STB_INCLUDEDIR)
+  unset (STB_INCLUDEDIR)
+  find_path (STB_INCLUDEDIR stb_image.h PATH_SUFFIXES stb)
+endif ()
+if (NOT STB_INCLUDEDIR)
+  message (FATAL_ERROR "stb_image.h not found")
+endif ()
+
+#    #set_target_properties(glslang::validator properties imported_location_debug "/home/cj/documents/vulkan-2024/lunarg-4cj-/1.3.290.0/source/glslang/build")
+#    # extracted constant for the package name
+#    set(glslang_package_name "glslang")
+#    set(glslang_dir ${vulkan_sdk}/lib/cmake/glslang)
+#    message(status ${glslang_dir})
+#    # find the required package
+#    find_package(${glslang_package_name} required)
+#    # assuming you have a find_package for glslang
+#    find_package(glslang required)
+
+add_executable (glslang::validator IMPORTED)
+find_program (GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
+set_property (TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
+
+## set the imported location for the debug configuration
+#set_target_properties(glslang::validator properties
+#        imported_location_debug "/home/cj/glslang/validator/debug/version"
+#        imported_location_release "/home/cj/glslang/validator/release/version"
+#        # you can add more configurations if needed
+#)
+
+function (add_shaders_target target)
+  cmake_parse_arguments ("shader" "" "chapter_name" "sources" ${argn})
+  set (shaders_dir ${shader_chapter_name}/shaders)
+  add_custom_command (
+    output ${shaders_dir}
+    command ${cmake_command} -e make_directory ${shaders_dir}
+    )
+  set (shaders ${shaders_dir}/frag.spv ${shaders_dir}/vert.spv)
+  # some chapters may have compute shaders in addition to vertex and fragment shaders,
+  # so we conditionally check this and add them to the target
+  string(find "${shader_sources}" "${chapter_shader}.comp" compute_shader_index)
+  if (${compute_shader_index} greater -1)
+    set (shaders ${shaders} ${shaders_dir}/comp.spv)
+  endif()
+
+  message(status "in add_shaders_target()")
+  add_custom_command (
+    output ${shaders}
+    command glslang::validator
+    args --target-env vulkan1.0 ${shader_sources} --quiet
+    working_directory ${shaders_dir}
+    depends ${shaders_dir} ${shader_sources}
+    comment "compiling shaders"
+    verbatim
+  )
+  add_custom_target (${target} depends ${shaders})
+endfunction ()
+
+function (add_chapter CHAPTER_NAME)
+  cmake_parse_arguments (CHAPTER "" "SHADER" "LIBS;TEXTURES;MODELS" ${ARGN})
+
+  add_executable (${CHAPTER_NAME} ${CHAPTER_NAME}.cpp)
+  set_target_properties (${CHAPTER_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CHAPTER_NAME})
+  set_target_properties (${CHAPTER_NAME} PROPERTIES CXX_STANDARD 17)
+  target_link_libraries (${CHAPTER_NAME} Vulkan::Vulkan glfw)
+  target_include_directories (${CHAPTER_NAME} PRIVATE ${STB_INCLUDEDIR})
+
+  if (DEFINED CHAPTER_SHADER)
+    set (CHAPTER_SHADER_TARGET ${CHAPTER_NAME}_shader)
+    file (GLOB SHADER_SOURCES ${CHAPTER_SHADER}.frag ${CHAPTER_SHADER}.vert ${CHAPTER_SHADER}.comp)
+    add_shaders_target (${CHAPTER_SHADER_TARGET} CHAPTER_NAME ${CHAPTER_NAME} SOURCES ${SHADER_SOURCES})
+    add_dependencies (${CHAPTER_NAME} ${CHAPTER_SHADER_TARGET})
+  endif ()
+  if (DEFINED CHAPTER_LIBS)
+    target_link_libraries (${CHAPTER_NAME} ${CHAPTER_LIBS})
+  endif ()
+  if (DEFINED CHAPTER_MODELS)
+    file (COPY ${CHAPTER_MODELS} DESTINATION ${CMAKE_BINARY_DIR}/${CHAPTER_NAME}/models)
+  endif ()
+  if (DEFINED CHAPTER_TEXTURES)
+    file (COPY ${CHAPTER_TEXTURES} DESTINATION ${CMAKE_BINARY_DIR}/${CHAPTER_NAME}/textures)
+  endif ()
+
+endfunction ()
+
+add_chapter (00_base_code)
+
+add_chapter (01_instance_creation)
+add_chapter (01_instance_creation_zcj)
+
+add_chapter (02_validation_layers)
+add_chapter (02_validation_layers_zcj)
+add_chapter (02_validation_layers-2)
+
+add_chapter (03_physical_device_selection)
+add_chapter (03_physical_device_selection_zcj)
+
+add_chapter (04_logical_device)
+add_chapter (04_logical_device_zcj)
+#add_chapter (04_logical_device-cj-04)
+
+add_chapter (05_window_surface)
+add_chapter (05_window_surface_zcj)
+#add_chapter (05_cj_window_surface-cj-05)
+
+add_chapter (06_swap_chain_creation)
+add_chapter (06_swap_chain_creation_zcj)
+
+add_chapter (07_image_views)
+add_chapter (07_image_views_zcj)
+
+add_chapter (08_graphics_pipeline)
+add_chapter (08_graphics_pipeline_zcj)
+
+add_chapter (09_shader_modules
+  shader 09_shader_base)
+
+add_chapter (09_shader_modules_zcj
+        shader 09_shader_base)
+
+add_chapter (10_fixed_functions
+  shader 09_shader_base)
+add_chapter (10_fixed_functions_zcj
+        shader 09_shader_base)
+
+add_chapter (11_render_passes
+  shader 09_shader_base)
+add_chapter (11_render_passes_zcj
+        shader 09_shader_base)
+
+add_chapter (12_graphics_pipeline_complete
+  shader 09_shader_base)
+add_chapter (12_graphics_pipeline_complete_zcj
+        shader 09_shader_base)
+
+add_chapter (13_framebuffers
+  shader 09_shader_base)
+add_chapter (13_framebuffers_zcj
+        shader 09_shader_base)
+
+add_chapter (14_command_buffers
+  shader 09_shader_base)
+add_chapter (14_command_buffers_zcj
+        shader 09_shader_base)
+
+#
+add_chapter (15_hello_triangle
+        shader 09_shader_base)
+add_chapter (15_hello_triangle_zcj
+        shader 09_shader_base)
+
+add_chapter (16_frames_in_flight
+        shader 09_shader_base)
+add_chapter (16_frames_in_flight_zcj
+        shader 09_shader_base)
+
+#
+add_chapter (17_swap_chain_recreation
+  shader 09_shader_base)
+add_chapter (17_swap_chain_recreation_zcj
+        shader 09_shader_base)
+
+add_chapter (18_vertex_input
+  shader 18_shader_vertexbuffer
+  libs glm::glm)
+add_chapter (18_vertex_input_zcj
+        shader 18_shader_vertexbuffer
+        libs glm::glm)
+
+add_chapter (19_vertex_buffer
+  shader 18_shader_vertexbuffer
+  libs glm::glm)
+add_chapter (19_vertex_buffer_zcj
+        shader 18_shader_vertexbuffer
+        libs glm::glm)
+
+add_chapter (20_staging_buffer
+  shader 18_shader_vertexbuffer
+  libs glm::glm)
+add_chapter (20_staging_buffer_zcj
+        shader 18_shader_vertexbuffer
+        libs glm::glm)
+
+add_chapter (21_index_buffer
+  shader 18_shader_vertexbuffer
+  libs glm::glm)
+add_chapter (21_index_buffer_zcj
+        shader 18_shader_vertexbuffer
+        libs glm::glm)
+
+add_chapter (22_descriptor_set_layout
+  shader 22_shader_ubo
+  libs glm::glm)
+add_chapter (22_descriptor_set_layout_zcj
+        shader 22_shader_ubo
+        libs glm::glm)
+
+add_chapter (23_descriptor_sets
+  shader 22_shader_ubo
+  libs glm::glm)
+add_chapter (23_descriptor_sets_zcj
+        shader 22_shader_ubo
+        libs glm::glm)
+
+add_chapter (24_texture_image
+  shader 22_shader_ubo
+  textures ../images/texture.jpg
+  libs glm::glm)
+add_chapter (24_texture_image_zcj
+        shader 22_shader_ubo
+        textures ../images/texture.jpg
+        libs glm::glm)
+
+add_chapter (25_sampler
+  shader 22_shader_ubo
+  textures ../images/texture.jpg
+  libs glm::glm)
+add_chapter (25_sampler_zcj
+        shader 22_shader_ubo
+        textures ../images/texture.jpg
+        libs glm::glm)
+
+add_chapter (26_texture_mapping
+  shader 26_shader_textures
+  textures ../images/texture.jpg
+  libs glm::glm)
+add_chapter (26_texture_mapping_zcj
+        shader 26_shader_textures
+        textures ../images/texture.jpg
+        libs glm::glm)
+
+add_chapter (27_depth_buffering
+  shader 27_shader_depth
+  textures ../images/texture.jpg
+  libs glm::glm)
+add_chapter (27_depth_buffering_zcj
+        shader 27_shader_depth
+        textures ../images/texture.jpg
+        libs glm::glm)
+
+add_chapter (28_model_loading
+  shader 27_shader_depth
+  models ../resources/viking_room.obj
+  textures ../resources/viking_room.png
+  libs glm::glm tinyobjloader::tinyobjloader)
+add_chapter (28_model_loading_zcj
+        shader 27_shader_depth
+        models ../resources/viking_room.obj
+        textures ../resources/viking_room.png
+        libs glm::glm tinyobjloader::tinyobjloader)
+
+add_chapter (29_mipmapping
+  shader 27_shader_depth
+  models ../resources/viking_room.obj
+  textures ../resources/viking_room.png
+  libs glm::glm tinyobjloader::tinyobjloader)
+add_chapter (29_mipmapping_zcj
+        shader 27_shader_depth
+        models ../resources/viking_room.obj
+        textures ../resources/viking_room.png
+        libs glm::glm tinyobjloader::tinyobjloader)
+
+add_chapter (30_multisampling
+  shader 27_shader_depth
+  models ../resources/viking_room.obj
+  textures ../resources/viking_room.png
+  libs glm::glm tinyobjloader::tinyobjloader)
+add_chapter (30_multisampling_zcj
+        shader 27_shader_depth
+        models ../resources/viking_room.obj
+        textures ../resources/viking_room.png
+        libs glm::glm tinyobjloader::tinyobjloader)
+
+add_chapter (31_compute_shader
+  shader 31_shader_compute
+  libs glm::glm)
+add_chapter (31_compute_shader_zcj
+        shader 31_shader_compute
+        libs glm::glm)
+
