@@ -80,7 +80,7 @@ struct Vertex_18 {
     }
 
     static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};// 2 attributes
 
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;

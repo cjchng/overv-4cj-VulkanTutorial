@@ -34,7 +34,7 @@ Changing code across chapters
 -----------------------------
 
 It is sometimes necessary to change code that is reused across many chapters,
-for example a function like `createBuffer`. If you make such a change, then you
+for example a function like `createBuffer_20`. If you make such a change, then you
 should update the code files using the following steps:
 
 * Update any chapters that reference the modified code.
